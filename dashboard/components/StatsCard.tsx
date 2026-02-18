@@ -1,69 +1,95 @@
-import { LucideIcon } from 'lucide-react'
-import { cn } from '@/lib/utils'
+'use client'
+
+import { Package, TrendingUp, ShoppingCart, AlertTriangle, LucideIcon } from 'lucide-react'
 
 interface StatsCardProps {
     title: string
-    value: number | string
+    value: number
     subtitle?: string
     icon: LucideIcon
-    color: 'blue' | 'green' | 'purple' | 'orange'
+    color: 'indigo' | 'cyan' | 'violet' | 'orange' | 'green'
     loading?: boolean
     alert?: boolean
 }
 
-const colorClasses = {
-    blue: 'from-blue-600 to-cyan-600',
-    green: 'from-green-600 to-emerald-600',
-    purple: 'from-purple-600 to-pink-600',
-    orange: 'from-orange-600 to-red-600',
+const colorMap = {
+    indigo: {
+        iconBg: 'bg-indigo-500/15 border border-indigo-500/20',
+        iconColor: 'text-indigo-400',
+        glow: 'hover:shadow-glow-indigo',
+        value: 'text-indigo-300',
+        accent: 'from-indigo-500/20 to-transparent',
+    },
+    cyan: {
+        iconBg: 'bg-cyan-500/15 border border-cyan-500/20',
+        iconColor: 'text-cyan-400',
+        glow: 'hover:shadow-glow-cyan',
+        value: 'text-cyan-300',
+        accent: 'from-cyan-500/20 to-transparent',
+    },
+    violet: {
+        iconBg: 'bg-violet-500/15 border border-violet-500/20',
+        iconColor: 'text-violet-400',
+        glow: 'hover:shadow-glow-violet',
+        value: 'text-violet-300',
+        accent: 'from-violet-500/20 to-transparent',
+    },
+    orange: {
+        iconBg: 'bg-orange-500/15 border border-orange-500/20',
+        iconColor: 'text-orange-400',
+        glow: 'hover:shadow-glow-orange',
+        value: 'text-orange-300',
+        accent: 'from-orange-500/20 to-transparent',
+    },
+    green: {
+        iconBg: 'bg-emerald-500/15 border border-emerald-500/20',
+        iconColor: 'text-emerald-400',
+        glow: 'hover:shadow-glow-green',
+        value: 'text-emerald-300',
+        accent: 'from-emerald-500/20 to-transparent',
+    },
 }
 
 export function StatsCard({ title, value, subtitle, icon: Icon, color, loading, alert }: StatsCardProps) {
-    return (
-        <div className={cn(
-            "relative overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700",
-            "bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm",
-            "p-6 transition-all duration-300 hover:shadow-lg hover:scale-105",
-            "animate-fadeIn",
-            alert && "ring-2 ring-orange-500 ring-offset-2"
-        )}>
-            {/* Background Gradient */}
-            <div className={cn(
-                "absolute top-0 right-0 w-32 h-32 opacity-10 blur-3xl rounded-full",
-                `bg-gradient-to-br ${colorClasses[color]}`
-            )} />
+    const c = colorMap[color]
 
-            {/* Icon */}
-            <div className="relative flex items-start justify-between mb-4">
-                <div className={cn(
-                    "p-3 rounded-xl bg-gradient-to-br",
-                    colorClasses[color]
-                )}>
-                    <Icon className="w-6 h-6 text-white" />
+    if (loading) {
+        return (
+            <div className="glass-card p-5">
+                <div className="skeleton h-4 w-24 mb-4" />
+                <div className="skeleton h-9 w-16 mb-2" />
+                <div className="skeleton h-3 w-20" />
+            </div>
+        )
+    }
+
+    return (
+        <div className={`glass-card p-5 transition-all duration-300 cursor-default ${c.glow} ${alert ? 'border-orange-500/30' : ''}`}>
+            {/* Top row */}
+            <div className="flex items-start justify-between mb-4">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${c.iconBg}`}>
+                    <Icon className={`w-5 h-5 ${c.iconColor}`} />
                 </div>
                 {alert && (
-                    <span className="px-2 py-1 text-xs font-semibold text-orange-600 bg-orange-100 rounded-full dark:bg-orange-900/30 dark:text-orange-400">
-                        ¡Atención!
-                    </span>
+                    <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse-glow" />
                 )}
             </div>
 
-            {/* Content */}
-            <div className="relative">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">{title}</p>
-                {loading ? (
-                    <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                ) : (
-                    <div className="flex items-baseline gap-2">
-                        <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                            {value}
-                        </p>
-                        {subtitle && (
-                            <span className="text-sm text-gray-500 dark:text-gray-400">{subtitle}</span>
-                        )}
-                    </div>
+            {/* Value */}
+            <div className="mb-1">
+                <span className={`text-3xl font-bold tracking-tight ${c.value}`}>
+                    {value.toLocaleString()}
+                </span>
+                {subtitle && (
+                    <span className="text-sm text-slate-500 ml-2">{subtitle}</span>
                 )}
             </div>
+
+            {/* Title */}
+            <p className="text-sm text-slate-400 font-medium">{title}</p>
+
+            {/* Bottom accent bar */}
+            <div className={`mt-4 h-0.5 rounded-full bg-gradient-to-r ${c.accent}`} />
         </div>
     )
 }

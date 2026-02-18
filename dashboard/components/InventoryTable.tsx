@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { Package, Search, Edit2, Save, X } from 'lucide-react'
+import { Package, Search, Edit2, Save, X, CheckCircle } from 'lucide-react'
 
 interface Item {
     id: string
@@ -31,36 +31,25 @@ export function InventoryTable() {
 
     async function loadItems() {
         const supabase = createClient()
-
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('items')
             .select('*')
             .eq('active', true)
-            .order('code', { ascending: true })
-
-        if (data) {
-            setItems(data)
-        }
+            .order('code')
+        if (data) setItems(data)
         setLoading(false)
     }
 
     async function handleSaveStock(itemId: string) {
         setSaving(true)
         const supabase = createClient()
-
         const item = items.find(i => i.id === itemId)
         if (!item) return
 
         const previousStock = item.stock
-
-        // 1. Actualizar stock
-        const { error } = await supabase
-            .from('items')
-            .update({ stock: editingStock })
-            .eq('id', itemId)
+        const { error } = await supabase.from('items').update({ stock: editingStock }).eq('id', itemId)
 
         if (!error) {
-            // 2. Registrar movimiento manualmente (sin trigger)
             await supabase.from('movements').insert({
                 tenant_id: item.tenant_id,
                 item_id: itemId,
@@ -70,57 +59,53 @@ export function InventoryTable() {
                 new_stock: editingStock,
                 notes: `Ajuste manual de stock: ${previousStock} → ${editingStock}`
             })
-
-            // 3. Actualizar UI
-            setItems(items.map(i =>
-                i.id === itemId ? { ...i, stock: editingStock } : i
-            ))
+            setItems(items.map(i => i.id === itemId ? { ...i, stock: editingStock } : i))
             setEditingId(null)
         } else {
             alert('Error al actualizar stock: ' + error.message)
         }
-
         setSaving(false)
     }
 
-    function handleEdit(item: Item) {
-        setEditingId(item.id)
-        setEditingStock(item.stock)
-    }
-
-    function handleCancel() {
-        setEditingId(null)
-        setEditingStock(0)
-    }
-
-    const filteredItems = items.filter(item =>
+    const filtered = items.filter(item =>
         item.code.toLowerCase().includes(search.toLowerCase()) ||
         item.data?.piedra?.toLowerCase().includes(search.toLowerCase())
     )
 
+    const getStockStatus = (stock: number) => {
+        if (stock === 0) return { label: 'Sin stock', color: 'text-red-400 bg-red-500/10 border-red-500/20' }
+        if (stock <= 3) return { label: 'Stock bajo', color: 'text-orange-400 bg-orange-500/10 border-orange-500/20' }
+        return { label: 'En stock', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' }
+    }
+
     return (
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm overflow-hidden">
+        <div className="glass-card overflow-hidden">
             {/* Header */}
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="p-6 border-b border-white/[0.06]">
                 <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                        <Package className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Inventario</h2>
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center">
+                            <Package className="w-4 h-4 text-indigo-400" />
+                        </div>
+                        <div>
+                            <h2 className="text-sm font-semibold text-white">Inventario</h2>
+                            <p className="text-xs text-slate-500">{items.length} productos activos</p>
+                        </div>
                     </div>
-                    <span className="px-3 py-1 text-sm font-medium text-indigo-600 bg-indigo-100 rounded-full dark:bg-indigo-900/30 dark:text-indigo-400">
-                        {filteredItems.length} productos
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-medium">
+                        {filtered.length} resultados
                     </span>
                 </div>
 
                 {/* Search */}
                 <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                     <input
                         type="text"
-                        placeholder="Buscar productos..."
+                        placeholder="Buscar por código o piedra..."
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                        className="input-dark pl-9"
                     />
                 </div>
             </div>
@@ -128,98 +113,97 @@ export function InventoryTable() {
             {/* Table */}
             <div className="overflow-x-auto">
                 <table className="w-full">
-                    <thead className="bg-gray-50 dark:bg-gray-900/50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Código</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Piedra</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Formato</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Stock</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acción</th>
+                    <thead>
+                        <tr className="border-b border-white/[0.06]">
+                            {['Código', 'Piedra', 'Formato', 'Cuerda', 'Precio', 'Stock', 'Estado', ''].map(h => (
+                                <th key={h} className="px-5 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                                    {h}
+                                </th>
+                            ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    <tbody className="divide-y divide-white/[0.04]">
                         {loading ? (
                             Array.from({ length: 5 }).map((_, i) => (
                                 <tr key={i}>
-                                    <td className="px-6 py-4"><div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" /></td>
-                                    <td className="px-6 py-4"><div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" /></td>
-                                    <td className="px-6 py-4"><div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" /></td>
-                                    <td className="px-6 py-4"><div className="h-4 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" /></td>
-                                    <td className="px-6 py-4"><div className="h-4 w-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" /></td>
+                                    {Array.from({ length: 8 }).map((_, j) => (
+                                        <td key={j} className="px-5 py-4">
+                                            <div className="skeleton h-4 w-full" />
+                                        </td>
+                                    ))}
                                 </tr>
                             ))
-                        ) : filteredItems.length === 0 ? (
+                        ) : filtered.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                                <td colSpan={8} className="px-5 py-12 text-center text-slate-500 text-sm">
                                     No se encontraron productos
                                 </td>
                             </tr>
                         ) : (
-                            filteredItems.map((item) => (
-                                <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">{item.code}</span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="text-sm text-gray-900 dark:text-white">{item.data?.piedra}</span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="inline-flex px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-100 rounded dark:bg-indigo-900/30 dark:text-indigo-400">
-                                            {item.data?.formato}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {editingId === item.id ? (
-                                            <input
-                                                type="number"
-                                                value={editingStock}
-                                                onChange={(e) => setEditingStock(parseInt(e.target.value) || 0)}
-                                                className="w-20 px-2 py-1 border border-indigo-500 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                                autoFocus
-                                            />
-                                        ) : (
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.stock === 0
-                                                ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                                                : item.stock < 3
-                                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                                                    : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                                }`}>
-                                                {item.stock} unidades
+                            filtered.map((item) => {
+                                const status = getStockStatus(item.stock)
+                                const isEditing = editingId === item.id
+                                return (
+                                    <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
+                                        <td className="px-5 py-4">
+                                            <span className="font-mono text-xs font-bold text-indigo-400">{item.code}</span>
+                                        </td>
+                                        <td className="px-5 py-4 text-sm text-slate-200 font-medium">{item.data?.piedra || '—'}</td>
+                                        <td className="px-5 py-4 text-xs text-slate-400">{item.data?.formato || '—'}</td>
+                                        <td className="px-5 py-4 text-xs text-slate-400">{item.data?.cuerda || '—'}</td>
+                                        <td className="px-5 py-4 text-sm font-semibold text-emerald-400">
+                                            ${item.data?.precio?.toLocaleString() || '—'}
+                                        </td>
+                                        <td className="px-5 py-4">
+                                            {isEditing ? (
+                                                <input
+                                                    type="number"
+                                                    value={editingStock}
+                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingStock(parseInt(e.target.value) || 0)}
+                                                    className="w-20 px-2 py-1 text-sm text-center bg-indigo-500/10 border border-indigo-500/40 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                                    min="0"
+                                                    autoFocus
+                                                />
+                                            ) : (
+                                                <span className="text-sm font-bold text-white">{item.stock}</span>
+                                            )}
+                                        </td>
+                                        <td className="px-5 py-4">
+                                            <span className={`inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border font-medium ${status.color}`}>
+                                                <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                                                {status.label}
                                             </span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {editingId === item.id ? (
-                                            <div className="flex gap-2">
+                                        </td>
+                                        <td className="px-5 py-4">
+                                            {isEditing ? (
+                                                <div className="flex items-center gap-1.5">
+                                                    <button
+                                                        onClick={() => handleSaveStock(item.id)}
+                                                        disabled={saving}
+                                                        className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 hover:bg-emerald-500/25 transition-colors disabled:opacity-50"
+                                                    >
+                                                        <Save className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setEditingId(null)}
+                                                        disabled={saving}
+                                                        className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-white/10 transition-colors disabled:opacity-50"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            ) : (
                                                 <button
-                                                    onClick={() => handleSaveStock(item.id)}
-                                                    disabled={saving}
-                                                    className="p-1 text-green-600 hover:text-green-700 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
-                                                    title="Guardar"
+                                                    onClick={() => { setEditingId(item.id); setEditingStock(item.stock) }}
+                                                    className="w-7 h-7 rounded-lg bg-white/0 border border-white/0 flex items-center justify-center text-slate-600 hover:text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/20 transition-all opacity-0 group-hover:opacity-100"
                                                 >
-                                                    <Save className="w-4 h-4" />
+                                                    <Edit2 className="w-3.5 h-3.5" />
                                                 </button>
-                                                <button
-                                                    onClick={handleCancel}
-                                                    disabled={saving}
-                                                    className="p-1 text-gray-600 hover:text-gray-700 hover:bg-gray-50 rounded transition-colors disabled:opacity-50"
-                                                    title="Cancelar"
-                                                >
-                                                    <X className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <button
-                                                onClick={() => handleEdit(item)}
-                                                className="p-1 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded transition-colors"
-                                                title="Editar stock"
-                                            >
-                                                <Edit2 className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))
+                                            )}
+                                        </td>
+                                    </tr>
+                                )
+                            })
                         )}
                     </tbody>
                 </table>

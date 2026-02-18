@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { formatDate } from '@/lib/utils'
 import { History, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react'
+import { formatDate } from '@/lib/utils'
 
 interface Movement {
     id: string
@@ -19,6 +19,30 @@ interface Movement {
     }
 }
 
+const typeConfig = {
+    sale: {
+        icon: TrendingDown,
+        color: 'text-red-400',
+        bg: 'bg-red-500/10 border-red-500/20',
+        label: 'Venta',
+        badge: 'bg-red-500/15 text-red-400 border border-red-500/20',
+    },
+    restock: {
+        icon: TrendingUp,
+        color: 'text-emerald-400',
+        bg: 'bg-emerald-500/10 border-emerald-500/20',
+        label: 'Reposición',
+        badge: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
+    },
+    adjustment: {
+        icon: RefreshCw,
+        color: 'text-blue-400',
+        bg: 'bg-blue-500/10 border-blue-500/20',
+        label: 'Ajuste',
+        badge: 'bg-blue-500/15 text-blue-400 border border-blue-500/20',
+    },
+}
+
 export function StockHistory() {
     const [movements, setMovements] = useState<Movement[]>([])
     const [loading, setLoading] = useState(true)
@@ -28,123 +52,78 @@ export function StockHistory() {
     }, [])
 
     async function loadMovements() {
+        setLoading(true)
         const supabase = createClient()
-
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('movements')
-            .select(`
-        *,
-        items:item_id (code, data)
-      `)
+            .select('*, items:item_id(code, data)')
             .order('created_at', { ascending: false })
             .limit(20)
 
-        if (data) {
-            setMovements(data)
-        }
+        if (data) setMovements(data)
         setLoading(false)
     }
 
-    const typeConfig = {
-        sale: { label: 'Venta', color: 'red', icon: TrendingDown },
-        restock: { label: 'Reposición', color: 'green', icon: TrendingUp },
-        adjustment: { label: 'Ajuste', color: 'blue', icon: RefreshCw },
-    }
-
     return (
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm overflow-hidden">
-            {/* Header */}
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <History className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Historial de Movimientos</h2>
+        <div className="glass-card p-6 flex flex-col">
+            <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-violet-500/15 border border-violet-500/20 flex items-center justify-center">
+                        <History className="w-4 h-4 text-violet-400" />
                     </div>
-                    <button
-                        onClick={loadMovements}
-                        className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                        title="Refrescar"
-                    >
-                        <RefreshCw className="w-4 h-4" />
-                    </button>
+                    <div>
+                        <h2 className="text-sm font-semibold text-white">Historial de Movimientos</h2>
+                        <p className="text-xs text-slate-500">Últimos cambios de stock</p>
+                    </div>
                 </div>
+                <button
+                    onClick={loadMovements}
+                    className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                </button>
             </div>
 
-            {/* Movements List */}
-            <div className="divide-y divide-gray-200 dark:divide-gray-700 max-h-[600px] overflow-y-auto">
+            <div className="space-y-2.5 overflow-y-auto max-h-[480px]">
                 {loading ? (
                     Array.from({ length: 5 }).map((_, i) => (
-                        <div key={i} className="p-4">
-                            <div className="space-y-2">
-                                <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                                <div className="h-3 w-2/3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                            </div>
-                        </div>
+                        <div key={i} className="skeleton h-16 w-full" />
                     ))
                 ) : movements.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                        No hay movimientos registrados
+                    <div className="flex items-center justify-center h-32">
+                        <p className="text-sm text-slate-500">Sin movimientos registrados</p>
                     </div>
                 ) : (
-                    movements.map((movement) => {
-                        const config = typeConfig[movement.type as keyof typeof typeConfig] || typeConfig.adjustment
+                    movements.map((m) => {
+                        const config = typeConfig[m.type as keyof typeof typeConfig] || typeConfig.adjustment
                         const Icon = config.icon
-                        const isIncrease = movement.quantity > 0
+                        const isPositive = m.quantity > 0
 
                         return (
-                            <div key={movement.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                                <div className="flex items-start gap-3">
-                                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${config.color === 'green'
-                                            ? 'bg-green-100 dark:bg-green-900/30'
-                                            : config.color === 'red'
-                                                ? 'bg-red-100 dark:bg-red-900/30'
-                                                : 'bg-blue-100 dark:bg-blue-900/30'
-                                        }`}>
-                                        <Icon className={`w-5 h-5 ${config.color === 'green'
-                                                ? 'text-green-600 dark:text-green-400'
-                                                : config.color === 'red'
-                                                    ? 'text-red-600 dark:text-red-400'
-                                                    : 'text-blue-600 dark:text-blue-400'
-                                            }`} />
+                            <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.05] transition-colors">
+                                <div className={`w-8 h-8 rounded-lg border flex items-center justify-center flex-shrink-0 ${config.bg}`}>
+                                    <Icon className={`w-3.5 h-3.5 ${config.color}`} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                        <span className="text-xs font-mono font-semibold text-slate-300">
+                                            {m.items?.code || '—'}
+                                        </span>
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${config.badge}`}>
+                                            {config.label}
+                                        </span>
                                     </div>
-
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="font-mono text-sm font-medium text-gray-900 dark:text-white">
-                                                {movement.items?.code || 'N/A'}
-                                            </span>
-                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${config.color === 'green'
-                                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                                    : config.color === 'red'
-                                                        ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                                                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                                                }`}>
-                                                {config.label}
-                                            </span>
-                                        </div>
-
-                                        <p className="text-sm text-gray-900 dark:text-white mb-1">
-                                            {movement.items?.data?.piedra || 'Producto'}
-                                        </p>
-
-                                        <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                                            <span>Stock: {movement.previous_stock}</span>
-                                            <span className={isIncrease ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-                                                {isIncrease ? '+' : ''}{movement.quantity}
-                                            </span>
-                                            <span>→ {movement.new_stock}</span>
-                                        </div>
-
-                                        {movement.notes && (
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                {movement.notes}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                                        {formatDate(movement.created_at)}
-                                    </div>
+                                    <p className="text-xs text-slate-500 truncate">
+                                        {m.items?.data?.piedra || 'Producto'}
+                                    </p>
+                                </div>
+                                <div className="text-right flex-shrink-0">
+                                    <p className={`text-sm font-bold ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                                        {isPositive ? '+' : ''}{m.quantity}
+                                    </p>
+                                    <p className="text-[10px] text-slate-600">
+                                        {m.previous_stock} → {m.new_stock}
+                                    </p>
                                 </div>
                             </div>
                         )

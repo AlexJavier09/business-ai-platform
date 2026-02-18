@@ -2,109 +2,106 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
-import { TrendingUp } from 'lucide-react'
+import { BarChart2 } from 'lucide-react'
+import {
+    AreaChart, Area, XAxis, YAxis, CartesianGrid,
+    Tooltip, ResponsiveContainer
+} from 'recharts'
 
-interface SalesData {
-    piedra: string
+interface SaleData {
+    date: string
     ventas: number
 }
 
-const COLORS = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444']
+const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+        return (
+            <div className="glass-card px-4 py-3 text-sm">
+                <p className="text-slate-400 mb-1">{label}</p>
+                <p className="font-bold text-indigo-300">{payload[0].value} ventas</p>
+            </div>
+        )
+    }
+    return null
+}
 
 export function SalesChart() {
-    const [data, setData] = useState<SalesData[]>([])
+    const [data, setData] = useState<SaleData[]>([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        loadSalesData()
+        loadData()
     }, [])
 
-    async function loadSalesData() {
+    async function loadData() {
         const supabase = createClient()
-
-        // Get movements (sales) from last 30 days
         const thirtyDaysAgo = new Date()
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-        const { data: movements, error } = await supabase
+        const { data: movements } = await supabase
             .from('movements')
-            .select(`
-        quantity,
-        items:item_id (
-          data
-        )
-      `)
+            .select('created_at, quantity')
             .eq('type', 'sale')
             .gte('created_at', thirtyDaysAgo.toISOString())
+            .order('created_at', { ascending: true })
 
         if (movements) {
-            // Aggregate by piedra
-            const salesByPiedra: { [key: string]: number } = {}
-
-            movements.forEach((m: any) => {
-                const piedra = m.items?.data?.piedra
-                if (piedra) {
-                    salesByPiedra[piedra] = (salesByPiedra[piedra] || 0) + Math.abs(m.quantity)
-                }
+            const grouped: Record<string, number> = {}
+            movements.forEach((m) => {
+                const date = new Date(m.created_at).toLocaleDateString('es-CO', { month: 'short', day: 'numeric' })
+                grouped[date] = (grouped[date] || 0) + Math.abs(m.quantity)
             })
-
-            const chartData = Object.entries(salesByPiedra)
-                .map(([piedra, ventas]) => ({ piedra, ventas }))
-                .sort((a, b) => b.ventas - a.ventas)
-                .slice(0, 6)
-
-            setData(chartData)
+            setData(Object.entries(grouped).map(([date, ventas]) => ({ date, ventas })))
         }
         setLoading(false)
     }
 
     return (
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm p-6">
+        <div className="glass-card p-6 h-full">
             <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Productos Más Vendidos</h2>
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center">
+                        <BarChart2 className="w-4 h-4 text-indigo-400" />
+                    </div>
+                    <div>
+                        <h2 className="text-sm font-semibold text-white">Ventas — Últimos 30 días</h2>
+                        <p className="text-xs text-slate-500">Movimientos de tipo venta</p>
+                    </div>
                 </div>
-                <span className="text-xs text-gray-500 dark:text-gray-400">Últimos 30 días</span>
+                <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-medium">
+                    {data.length} días
+                </span>
             </div>
 
             {loading ? (
-                <div className="h-80 flex items-center justify-center">
-                    <div className="animate-pulse text-gray-400">Cargando datos...</div>
-                </div>
+                <div className="skeleton h-48 w-full" />
             ) : data.length === 0 ? (
-                <div className="h-80 flex items-center justify-center text-gray-500 dark:text-gray-400">
-                    No hay datos de ventas disponibles
+                <div className="h-48 flex items-center justify-center">
+                    <p className="text-slate-500 text-sm">Sin datos de ventas aún</p>
                 </div>
             ) : (
-                <ResponsiveContainer width="100%" height={320}>
-                    <BarChart data={data}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                        <XAxis
-                            dataKey="piedra"
-                            tick={{ fill: '#6b7280' }}
-                            tickLine={{ stroke: '#e5e7eb' }}
+                <ResponsiveContainer width="100%" height={220}>
+                    <AreaChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                        <defs>
+                            <linearGradient id="colorVentas" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.08)" />
+                        <XAxis dataKey="date" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Area
+                            type="monotone"
+                            dataKey="ventas"
+                            stroke="#6366f1"
+                            strokeWidth={2}
+                            fill="url(#colorVentas)"
+                            dot={false}
+                            activeDot={{ r: 5, fill: '#6366f1', strokeWidth: 0 }}
                         />
-                        <YAxis
-                            tick={{ fill: '#6b7280' }}
-                            tickLine={{ stroke: '#e5e7eb' }}
-                        />
-                        <Tooltip
-                            contentStyle={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '8px',
-                                padding: '8px 12px',
-                            }}
-                            labelStyle={{ fontWeight: 600, color: '#111827' }}
-                        />
-                        <Bar dataKey="ventas" radius={[8, 8, 0, 0]}>
-                            {data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                        </Bar>
-                    </BarChart>
+                    </AreaChart>
                 </ResponsiveContainer>
             )}
         </div>

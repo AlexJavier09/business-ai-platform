@@ -2,14 +2,42 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { AlertTriangle, Bell } from 'lucide-react'
+import { Bell, AlertTriangle, Info, CheckCircle2 } from 'lucide-react'
 
 interface Alert {
     id: string
     type: string
-    message: string
     severity: string
+    message: string
     created_at: string
+    resolved: boolean
+}
+
+const severityConfig = {
+    critical: {
+        icon: AlertTriangle,
+        color: 'text-red-400',
+        bg: 'bg-red-500/10',
+        border: 'border-l-red-500',
+        badge: 'bg-red-500/15 text-red-400 border-red-500/20',
+        label: 'Crítico',
+    },
+    warning: {
+        icon: AlertTriangle,
+        color: 'text-orange-400',
+        bg: 'bg-orange-500/10',
+        border: 'border-l-orange-500',
+        badge: 'bg-orange-500/15 text-orange-400 border-orange-500/20',
+        label: 'Advertencia',
+    },
+    info: {
+        icon: Info,
+        color: 'text-blue-400',
+        bg: 'bg-blue-500/10',
+        border: 'border-l-blue-500',
+        badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
+        label: 'Info',
+    },
 }
 
 export function AlertsPanel() {
@@ -22,95 +50,61 @@ export function AlertsPanel() {
 
     async function loadAlerts() {
         const supabase = createClient()
-
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('alerts')
             .select('*')
             .eq('resolved', false)
             .order('created_at', { ascending: false })
             .limit(10)
 
-        if (data) {
-            setAlerts(data)
-        }
+        if (data) setAlerts(data)
         setLoading(false)
     }
 
-    const severityConfig = {
-        critical: { color: 'red', icon: AlertTriangle },
-        warning: { color: 'yellow', icon: Bell },
-        info: { color: 'blue', icon: Bell },
-    }
-
     return (
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm overflow-hidden h-full">
-            {/* Header */}
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Alertas Activas</h2>
+        <div className="glass-card p-6 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-orange-500/15 border border-orange-500/20 flex items-center justify-center">
+                        <Bell className="w-4 h-4 text-orange-400" />
                     </div>
-                    {alerts.length > 0 && (
-                        <span className="flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-orange-600 rounded-full">
-                            {alerts.length}
-                        </span>
-                    )}
+                    <div>
+                        <h2 className="text-sm font-semibold text-white">Alertas Activas</h2>
+                        <p className="text-xs text-slate-500">Sin resolver</p>
+                    </div>
                 </div>
+                {alerts.length > 0 && (
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 font-medium animate-pulse-glow">
+                        {alerts.length}
+                    </span>
+                )}
             </div>
 
-            {/* Alerts List */}
-            <div className="divide-y divide-gray-200 dark:divide-gray-700 max-h-[400px] overflow-y-auto">
+            <div className="flex-1 space-y-3 overflow-y-auto">
                 {loading ? (
                     Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i} className="p-4">
-                            <div className="space-y-2">
-                                <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                                <div className="h-3 w-2/3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                            </div>
-                        </div>
+                        <div key={i} className="skeleton h-16 w-full" />
                     ))
                 ) : alerts.length === 0 ? (
-                    <div className="p-8 text-center">
-                        <div className="inline-flex items-center justify-center w-12 h-12 mb-3 rounded-full bg-green-100 dark:bg-green-900/30">
-                            <AlertTriangle className="w-6 h-6 text-green-600 dark:text-green-400" />
-                        </div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
-                            ¡Todo bajo control!
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                            No hay alertas activas
-                        </p>
+                    <div className="flex flex-col items-center justify-center h-32 gap-2">
+                        <CheckCircle2 className="w-8 h-8 text-emerald-500/50" />
+                        <p className="text-sm text-slate-500">Sin alertas activas</p>
                     </div>
                 ) : (
                     alerts.map((alert) => {
-                        const config = severityConfig[alert.severity as keyof typeof severityConfig] || severityConfig.warning
+                        const config = severityConfig[alert.severity as keyof typeof severityConfig] || severityConfig.info
                         const Icon = config.icon
-
                         return (
-                            <div key={alert.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                                <div className="flex gap-3">
-                                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${config.color === 'red'
-                                            ? 'bg-red-100 dark:bg-red-900/30'
-                                            : config.color === 'yellow'
-                                                ? 'bg-yellow-100 dark:bg-yellow-900/30'
-                                                : 'bg-blue-100 dark:bg-blue-900/30'
-                                        }`}>
-                                        <Icon className={`w-4 h-4 ${config.color === 'red'
-                                                ? 'text-red-600 dark:text-red-400'
-                                                : config.color === 'yellow'
-                                                    ? 'text-yellow-600 dark:text-yellow-400'
-                                                    : 'text-blue-600 dark:text-blue-400'
-                                            }`} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
-                                            {alert.type === 'stock_low' ? 'Stock Bajo' : alert.type === 'out_of_stock' ? 'Sin Stock' : 'Alerta'}
-                                        </p>
-                                        <p className="text-xs text-gray-600 dark:text-gray-400">
-                                            {alert.message}
-                                        </p>
-                                    </div>
+                            <div
+                                key={alert.id}
+                                className={`flex items-start gap-3 p-3 rounded-xl ${config.bg} border-l-2 ${config.border} border border-white/5`}
+                            >
+                                <Icon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${config.color}`} />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-slate-300 leading-snug">{alert.message}</p>
+                                    <span className={`inline-block mt-1.5 text-[10px] px-2 py-0.5 rounded-full border font-medium ${config.badge}`}>
+                                        {config.label}
+                                    </span>
                                 </div>
                             </div>
                         )
