@@ -1,0 +1,120 @@
+{
+  "tenant": {
+    "id": "roar-pulseras",
+    "name": "Roar of the Sun",
+    "type": "ecommerce-jewelry",
+    "language": "es",
+    "currency": "COP",
+    "timezone": "America/Bogota"
+  },
+  
+  "database": {
+    "table_name": "productos",
+    "primary_key": "codigo",
+    "fields": [
+      {
+        "name": "codigo",
+        "type": "string",
+        "label": "Código",
+        "required": true,
+        "unique": true,
+        "example": "H001"
+      },
+      {
+        "name": "piedra",
+        "type": "string",
+        "label": "Piedra",
+        "searchable": true,
+        "example": "Cuarzo Rosa"
+      },
+      {
+        "name": "formato",
+        "type": "enum",
+        "label": "Formato",
+        "options": ["Bolitas", "chips"],
+        "example": "Bolitas"
+      },
+      {
+        "name": "cuerda",
+        "type": "enum",
+        "label": "Tipo de Cuerda",
+        "options": ["Cuerda", "elástico"],
+        "example": "Cuerda"
+      },
+      {
+        "name": "stock",
+        "type": "integer",
+        "label": "Stock Disponible",
+        "min": 0,
+        "default": 0
+      },
+      {
+        "name": "stock_minimo",
+        "type": "integer",
+        "label": "Stock Mínimo",
+        "default": 3
+      },
+      {
+        "name": "precio",
+        "type": "decimal",
+        "label": "Precio (COP)",
+        "example": 45000
+      },
+      {
+        "name": "imagen_url",
+        "type": "url",
+        "label": "URL de Imagen",
+        "optional": true
+      }
+    ],
+    "stock_tracking": true
+  },
+  
+  "agents": {
+    "router": {
+      "name": "POLICIA",
+      "description": "Detector de intención",
+      "model": "gpt-4o-mini",
+      "categories": ["RESERVA", "CONVERSACION"],
+      "keywords_reserva": [
+        "piedra", "pulsera", "color", "material", "comprar", 
+        "precio", "cuarzo", "turmalina", "fluorita", "bolitas", 
+        "chips", "cuerda", "elastico", "disponible", "stock"
+      ]
+    },
+    "info": {
+      "name": "CONVERSACION",
+      "model": "gpt-4o-mini",
+      "catalog_url": "https://www.instagram.com/roar_sun",
+      "greeting": "✨ ¡Hola! Bienvenido a Roar of the Sun.",
+      "ask_name": "¿Con quién tenemos el gusto de hablar?"
+    },
+    "sales": {
+      "name": "TOMADOR_DE_PEDIDOS",
+      "model": "gpt-4o",
+      "required_fields": ["nombre_cliente", "email_o_celular", "codigo_producto"],
+      "success_message": "¡Excelente elección! He registrado tu pedido."
+    }
+  },
+  
+  "alerts": {
+    "stock_low": {
+      "enabled": true,
+      "check_interval_hours": 6,
+      "threshold_field": "stock",
+      "threshold_source": "stock_minimo",
+      "message_template": "⚠️ Stock bajo en {piedra} {formato} - Quedan {stock} unidades",
+      "channels": ["whatsapp", "email"]
+    }
+  },
+  
+  "integrations": {
+    "n8n": {
+      "enabled": true
+    },
+    "whatsapp": {
+      "provider": "manychat",
+      "enabled": true
+    }
+  }
+}
