@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase'
 import {
     Package, ShoppingCart, AlertTriangle, TrendingUp,
     LayoutDashboard, History, Bell, Settings, Zap,
-    ChevronRight, Activity, Menu, X, PanelLeftClose, PanelLeftOpen
+    ChevronRight, Activity, Menu, X, PanelLeftClose, PanelLeftOpen, MessageSquare
 } from 'lucide-react'
 import { StatsCard } from '@/components/StatsCard'
 import { InventoryTable } from '@/components/InventoryTable'
@@ -13,13 +13,15 @@ import { OrdersList } from '@/components/OrdersList'
 import { SalesChart } from '@/components/SalesChart'
 import { AlertsPanel } from '@/components/AlertsPanel'
 import { StockHistory } from '@/components/StockHistory'
+import { CRMView } from '@/components/CRMView'
 
-type Section = 'dashboard' | 'inventario' | 'pedidos' | 'historial' | 'alertas' | 'configuracion'
+type Section = 'dashboard' | 'inventario' | 'pedidos' | 'historial' | 'alertas' | 'configuracion' | 'crm'
 
 const navItems: { icon: any; label: string; key: Section }[] = [
     { icon: LayoutDashboard, label: 'Dashboard', key: 'dashboard' },
     { icon: Package, label: 'Inventario', key: 'inventario' },
     { icon: ShoppingCart, label: 'Pedidos', key: 'pedidos' },
+    { icon: MessageSquare, label: 'CRM / Chats', key: 'crm' },
     { icon: History, label: 'Historial', key: 'historial' },
     { icon: Bell, label: 'Alertas', key: 'alertas' },
     { icon: Settings, label: 'Configuración', key: 'configuracion' },
@@ -29,6 +31,7 @@ const sectionTitles: Record<Section, { title: string; subtitle: string }> = {
     dashboard: { title: 'Panel de Control', subtitle: 'Roar of the Sun · Joyería' },
     inventario: { title: 'Inventario', subtitle: 'Gestión de productos y stock' },
     pedidos: { title: 'Pedidos', subtitle: 'Gestión de órdenes de clientes' },
+    crm: { title: 'CRM · Conversaciones', subtitle: 'WhatsApp · Instagram · Messenger' },
     historial: { title: 'Historial de Movimientos', subtitle: 'Registro de cambios de stock' },
     alertas: { title: 'Alertas', subtitle: 'Notificaciones del sistema' },
     configuracion: { title: 'Configuración', subtitle: 'Ajustes del sistema' },
@@ -288,6 +291,13 @@ export default function Home() {
                     {activeSection === 'pedidos' && (
                         <div className="animate-fadeInUp opacity-0 max-w-3xl">
                             <OrdersList initialFilter={ordersFilter} />
+                        </div>
+                    )}
+
+                    {/* ── CRM ── */}
+                    {activeSection === 'crm' && (
+                        <div className="animate-fadeInUp opacity-0">
+                            <CRMView />
                         </div>
                     )}
 
