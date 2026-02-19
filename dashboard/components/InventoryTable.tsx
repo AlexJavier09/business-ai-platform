@@ -47,19 +47,56 @@ export function InventoryTable() {
         if (!item) return
 
         const previousStock = item.stock
-        const { error } = await supabase.from('items').update({ stock: editingStock }).eq('id', itemId)
+        const newStock = editingStock
+        const LOW_STOCK_THRESHOLD = 3
+
+        const { error } = await supabase.from('items').update({ stock: newStock }).eq('id', itemId)
 
         if (!error) {
+            // Log the movement
             await supabase.from('movements').insert({
                 tenant_id: item.tenant_id,
                 item_id: itemId,
-                type: editingStock > previousStock ? 'restock' : 'adjustment',
-                quantity: editingStock - previousStock,
+                type: newStock > previousStock ? 'restock' : 'adjustment',
+                quantity: newStock - previousStock,
                 previous_stock: previousStock,
-                new_stock: editingStock,
-                notes: `Ajuste manual de stock: ${previousStock} → ${editingStock}`
+                new_stock: newStock,
+                notes: `Ajuste manual de stock: ${previousStock} → ${newStock}`
             })
-            setItems(items.map(i => i.id === itemId ? { ...i, stock: editingStock } : i))
+
+            // Resolve open stock_low alerts if stock is now healthy
+            if (newStock > LOW_STOCK_THRESHOLD) {
+                await supabase
+                    .from('alerts')
+                    .update({ resolved: true, resolved_at: new Date().toISOString() })
+                    .eq('item_id', itemId)
+                    .eq('type', 'stock_low')
+                    .eq('resolved', false)
+            }
+            // If stock is still low (or zero) and no open alert exists, create one
+            else {
+                const { count } = await supabase
+                    .from('alerts')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('item_id', itemId)
+                    .eq('type', 'stock_low')
+                    .eq('resolved', false)
+
+                if (!count || count === 0) {
+                    await supabase.from('alerts').insert({
+                        tenant_id: item.tenant_id,
+                        item_id: itemId,
+                        type: 'stock_low',
+                        severity: newStock === 0 ? 'critical' : 'warning',
+                        message: newStock === 0
+                            ? `Sin stock: ${item.code}`
+                            : `Stock bajo (${newStock}): ${item.code}`,
+                        resolved: false,
+                    })
+                }
+            }
+
+            setItems(items.map(i => i.id === itemId ? { ...i, stock: newStock } : i))
             setEditingId(null)
         } else {
             alert('Error al actualizar stock: ' + error.message)
