@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { BarChart2 } from 'lucide-react'
 import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid,
-    Tooltip, ResponsiveContainer
+    BarChart, Bar, XAxis, YAxis, CartesianGrid,
+    Tooltip, ResponsiveContainer, Cell
 } from 'recharts'
 
 interface SaleData {
@@ -16,8 +16,8 @@ interface SaleData {
 const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
         return (
-            <div className="glass-card px-4 py-3 text-sm">
-                <p className="text-slate-400 mb-1">{label}</p>
+            <div className="glass-card px-4 py-3 text-sm shadow-lg">
+                <p className="text-slate-400 mb-1 text-xs">{label}</p>
                 <p className="font-bold text-indigo-300">{payload[0].value} ventas</p>
             </div>
         )
@@ -56,6 +56,8 @@ export function SalesChart() {
         setLoading(false)
     }
 
+    const maxValue = Math.max(...data.map(d => d.ventas), 1)
+
     return (
         <div className="glass-card p-6 h-full">
             <div className="flex items-center justify-between mb-6">
@@ -65,43 +67,46 @@ export function SalesChart() {
                     </div>
                     <div>
                         <h2 className="text-sm font-semibold text-white">Ventas — Últimos 30 días</h2>
-                        <p className="text-xs text-slate-500">Movimientos de tipo venta</p>
+                        <p className="text-xs text-slate-500">Unidades vendidas por día</p>
                     </div>
                 </div>
                 <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-medium">
-                    {data.length} días
+                    {data.reduce((s, d) => s + d.ventas, 0)} total
                 </span>
             </div>
 
             {loading ? (
-                <div className="skeleton h-48 w-full" />
+                <div className="skeleton h-52 w-full" />
             ) : data.length === 0 ? (
-                <div className="h-48 flex items-center justify-center">
+                <div className="h-52 flex items-center justify-center">
                     <p className="text-slate-500 text-sm">Sin datos de ventas aún</p>
                 </div>
             ) : (
                 <ResponsiveContainer width="100%" height={220}>
-                    <AreaChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                        <defs>
-                            <linearGradient id="colorVentas" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.08)" />
-                        <XAxis dataKey="date" tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fill: '#475569', fontSize: 11 }} axisLine={false} tickLine={false} />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Area
-                            type="monotone"
-                            dataKey="ventas"
-                            stroke="#6366f1"
-                            strokeWidth={2}
-                            fill="url(#colorVentas)"
-                            dot={false}
-                            activeDot={{ r: 5, fill: '#6366f1', strokeWidth: 0 }}
+                    <BarChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }} barSize={14}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,102,241,0.08)" vertical={false} />
+                        <XAxis
+                            dataKey="date"
+                            tick={{ fill: '#475569', fontSize: 11 }}
+                            axisLine={false}
+                            tickLine={false}
                         />
-                    </AreaChart>
+                        <YAxis
+                            tick={{ fill: '#475569', fontSize: 11 }}
+                            axisLine={false}
+                            tickLine={false}
+                            allowDecimals={false}
+                        />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(99,102,241,0.05)' }} />
+                        <Bar dataKey="ventas" radius={[4, 4, 0, 0]}>
+                            {data.map((entry, index) => (
+                                <Cell
+                                    key={index}
+                                    fill={entry.ventas === maxValue ? '#6366f1' : 'rgba(99,102,241,0.45)'}
+                                />
+                            ))}
+                        </Bar>
+                    </BarChart>
                 </ResponsiveContainer>
             )}
         </div>

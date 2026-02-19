@@ -195,7 +195,8 @@ export function InventoryTable() {
                                             ) : (
                                                 <button
                                                     onClick={() => { setEditingId(item.id); setEditingStock(item.stock) }}
-                                                    className="w-7 h-7 rounded-lg bg-white/0 border border-white/0 flex items-center justify-center text-slate-600 hover:text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/20 transition-all opacity-0 group-hover:opacity-100"
+                                                    className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/15 hover:border-indigo-500/30 transition-all"
+                                                    title="Editar stock"
                                                 >
                                                     <Edit2 className="w-3.5 h-3.5" />
                                                 </button>

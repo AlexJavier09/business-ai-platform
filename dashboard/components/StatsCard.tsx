@@ -10,6 +10,7 @@ interface StatsCardProps {
     color: 'indigo' | 'cyan' | 'violet' | 'orange' | 'green'
     loading?: boolean
     alert?: boolean
+    onClick?: () => void
 }
 
 const colorMap = {
@@ -19,6 +20,7 @@ const colorMap = {
         glow: 'hover:shadow-glow-indigo',
         value: 'text-indigo-300',
         accent: 'from-indigo-500/20 to-transparent',
+        ring: 'hover:border-indigo-500/40',
     },
     cyan: {
         iconBg: 'bg-cyan-500/15 border border-cyan-500/20',
@@ -26,6 +28,7 @@ const colorMap = {
         glow: 'hover:shadow-glow-cyan',
         value: 'text-cyan-300',
         accent: 'from-cyan-500/20 to-transparent',
+        ring: 'hover:border-cyan-500/40',
     },
     violet: {
         iconBg: 'bg-violet-500/15 border border-violet-500/20',
@@ -33,6 +36,7 @@ const colorMap = {
         glow: 'hover:shadow-glow-violet',
         value: 'text-violet-300',
         accent: 'from-violet-500/20 to-transparent',
+        ring: 'hover:border-violet-500/40',
     },
     orange: {
         iconBg: 'bg-orange-500/15 border border-orange-500/20',
@@ -40,6 +44,7 @@ const colorMap = {
         glow: 'hover:shadow-glow-orange',
         value: 'text-orange-300',
         accent: 'from-orange-500/20 to-transparent',
+        ring: 'hover:border-orange-500/40',
     },
     green: {
         iconBg: 'bg-emerald-500/15 border border-emerald-500/20',
@@ -47,11 +52,13 @@ const colorMap = {
         glow: 'hover:shadow-glow-green',
         value: 'text-emerald-300',
         accent: 'from-emerald-500/20 to-transparent',
+        ring: 'hover:border-emerald-500/40',
     },
 }
 
-export function StatsCard({ title, value, subtitle, icon: Icon, color, loading, alert }: StatsCardProps) {
+export function StatsCard({ title, value, subtitle, icon: Icon, color, loading, alert, onClick }: StatsCardProps) {
     const c = colorMap[color]
+    const isClickable = !!onClick
 
     if (loading) {
         return (
@@ -64,15 +71,25 @@ export function StatsCard({ title, value, subtitle, icon: Icon, color, loading, 
     }
 
     return (
-        <div className={`glass-card p-5 transition-all duration-300 cursor-default ${c.glow} ${alert ? 'border-orange-500/30' : ''}`}>
+        <div
+            onClick={onClick}
+            className={`glass-card p-5 transition-all duration-200 ${c.glow} ${c.ring} ${alert ? 'border-orange-500/30' : ''} ${isClickable ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}`}
+        >
             {/* Top row */}
             <div className="flex items-start justify-between mb-4">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${c.iconBg}`}>
                     <Icon className={`w-5 h-5 ${c.iconColor}`} />
                 </div>
-                {alert && (
-                    <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse-glow" />
-                )}
+                <div className="flex items-center gap-2">
+                    {alert && (
+                        <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse-glow" />
+                    )}
+                    {isClickable && (
+                        <span className="text-[10px] text-slate-500 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
+                            Ver →
+                        </span>
+                    )}
+                </div>
             </div>
 
             {/* Value */}

@@ -36,6 +36,7 @@ const sectionTitles: Record<Section, { title: string; subtitle: string }> = {
 
 export default function Home() {
     const [activeSection, setActiveSection] = useState<Section>('dashboard')
+    const [ordersFilter, setOrdersFilter] = useState<string>('grouped')
     const [stats, setStats] = useState({
         totalProducts: 0,
         totalStock: 0,
@@ -43,6 +44,15 @@ export default function Home() {
         lowStock: 0,
     })
     const [loading, setLoading] = useState(true)
+
+    function goToInventoryLowStock() {
+        setActiveSection('inventario')
+    }
+
+    function goToPendingOrders() {
+        setOrdersFilter('pending')
+        setActiveSection('pedidos')
+    }
 
     useEffect(() => { loadStats() }, [])
 
@@ -163,16 +173,16 @@ export default function Home() {
                         <div className="space-y-8">
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
                                 <div className="animate-fadeInUp stagger-1 opacity-0">
-                                    <StatsCard title="Productos Activos" value={stats.totalProducts} icon={Package} color="indigo" loading={loading} />
+                                    <StatsCard title="Productos Activos" value={stats.totalProducts} icon={Package} color="indigo" loading={loading} onClick={() => setActiveSection('inventario')} />
                                 </div>
                                 <div className="animate-fadeInUp stagger-2 opacity-0">
                                     <StatsCard title="Stock Total" value={stats.totalStock} subtitle="unidades" icon={TrendingUp} color="cyan" loading={loading} />
                                 </div>
                                 <div className="animate-fadeInUp stagger-3 opacity-0">
-                                    <StatsCard title="Pedidos Pendientes" value={stats.pendingOrders} icon={ShoppingCart} color="violet" loading={loading} />
+                                    <StatsCard title="Pedidos Pendientes" value={stats.pendingOrders} icon={ShoppingCart} color="violet" loading={loading} onClick={goToPendingOrders} />
                                 </div>
                                 <div className="animate-fadeInUp stagger-4 opacity-0">
-                                    <StatsCard title="Alertas de Stock" value={stats.lowStock} icon={AlertTriangle} color="orange" loading={loading} alert={stats.lowStock > 0} />
+                                    <StatsCard title="Alertas de Stock" value={stats.lowStock} icon={AlertTriangle} color="orange" loading={loading} alert={stats.lowStock > 0} onClick={goToInventoryLowStock} />
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -180,7 +190,7 @@ export default function Home() {
                                 <div><AlertsPanel /></div>
                             </div>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <OrdersList />
+                                <OrdersList initialFilter={ordersFilter} />
                                 <StockHistory />
                             </div>
                         </div>
@@ -196,7 +206,7 @@ export default function Home() {
                     {/* ── PEDIDOS ── */}
                     {activeSection === 'pedidos' && (
                         <div className="animate-fadeInUp opacity-0 max-w-3xl">
-                            <OrdersList />
+                            <OrdersList initialFilter={ordersFilter} />
                         </div>
                     )}
 
