@@ -162,7 +162,7 @@ export function InventoryTable() {
         // 1. Supabase Storage uploaded
         if (item.data?.image_url) return item.data.image_url
         // 2. Local public/items extracted from Excel
-        return `/items/${item.code}.png`
+        return `/items/${item.code}.jpg`
     }
 
     return (
