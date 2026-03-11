@@ -101,7 +101,10 @@ function MovementCard({ m }: { m: Movement }) {
     const [expanded, setExpanded] = useState(false)
     const config = typeConfig[m.type as keyof typeof typeConfig] || typeConfig.adjustment
     const Icon = config.icon
-    const isPositive = m.quantity > 0
+    // Derive sign from actual stock change, not from type or stored quantity
+    const stockDelta = m.new_stock - m.previous_stock
+    const displayQty = stockDelta !== 0 ? stockDelta : (m.type === 'sale' ? -Math.abs(m.quantity) : m.quantity)
+    const isPositive = displayQty > 0
     const time = formatDateTime(m.created_at)
     const hasOrder = !!m.orders
     const hasDetails = hasOrder || !!m.notes
@@ -147,7 +150,7 @@ function MovementCard({ m }: { m: Movement }) {
                 <div className="flex items-center gap-2 flex-shrink-0">
                     <div className="text-right">
                         <p className={`text-sm font-bold ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {isPositive ? '+' : ''}{m.quantity}
+                            {displayQty > 0 ? '+' : ''}{displayQty}
                         </p>
                         <p className="text-[10px] text-slate-600">
                             {m.previous_stock} → {m.new_stock}

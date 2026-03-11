@@ -255,11 +255,12 @@ function OrderCard({ order, editingId, editingNotes, editingStatus, saving, onEd
                                 value={editingStatus}
                                 onChange={(e) => onStatusChange(e.target.value)}
                                 onClick={e => e.stopPropagation()}
-                                className="text-xs px-2 py-1 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-indigo-500"
+                                className="text-xs px-2 py-1 rounded-lg border border-white/20 text-white focus:outline-none focus:border-indigo-500"
+                                style={{ backgroundColor: '#1e293b' }}
                             >
-                                <option value="pending">Pendiente</option>
-                                <option value="completed">Realizado</option>
-                                <option value="cancelled">Cancelado</option>
+                                <option value="pending" style={{ backgroundColor: '#1e293b' }}>Pendiente</option>
+                                <option value="completed" style={{ backgroundColor: '#1e293b' }}>Realizado</option>
+                                <option value="cancelled" style={{ backgroundColor: '#1e293b' }}>Cancelado</option>
                             </select>
                         ) : (
                             <span className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-full border font-medium ${config.badge}`}>

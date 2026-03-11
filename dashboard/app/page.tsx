@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 import {
     Package, ShoppingCart, AlertTriangle, TrendingUp,
     LayoutDashboard, History, Bell, Settings, Zap,
-    ChevronRight, Activity, Menu, X, PanelLeftClose, PanelLeftOpen
+    ChevronRight, Activity, Menu, X, PanelLeftClose, PanelLeftOpen, LogOut, DollarSign
 } from 'lucide-react'
 import { StatsCard } from '@/components/StatsCard'
 import { InventoryTable } from '@/components/InventoryTable'
@@ -13,8 +14,10 @@ import { OrdersList } from '@/components/OrdersList'
 import { SalesChart } from '@/components/SalesChart'
 import { AlertsPanel } from '@/components/AlertsPanel'
 import { StockHistory } from '@/components/StockHistory'
+import { MFASettings } from '@/components/MFASettings'
+import { AccountingView } from '@/components/AccountingView'
 
-type Section = 'dashboard' | 'inventario' | 'pedidos' | 'historial' | 'alertas' | 'configuracion'
+type Section = 'dashboard' | 'inventario' | 'pedidos' | 'historial' | 'alertas' | 'contabilidad' | 'configuracion'
 
 const navItems: { icon: any; label: string; key: Section }[] = [
     { icon: LayoutDashboard, label: 'Dashboard', key: 'dashboard' },
@@ -22,6 +25,7 @@ const navItems: { icon: any; label: string; key: Section }[] = [
     { icon: ShoppingCart, label: 'Pedidos', key: 'pedidos' },
     { icon: History, label: 'Historial', key: 'historial' },
     { icon: Bell, label: 'Alertas', key: 'alertas' },
+    { icon: DollarSign, label: 'Contabilidad', key: 'contabilidad' },
     { icon: Settings, label: 'Configuración', key: 'configuracion' },
 ]
 
@@ -31,6 +35,7 @@ const sectionTitles: Record<Section, { title: string; subtitle: string }> = {
     pedidos: { title: 'Pedidos', subtitle: 'Gestión de órdenes de clientes' },
     historial: { title: 'Historial de Movimientos', subtitle: 'Registro de cambios de stock' },
     alertas: { title: 'Alertas', subtitle: 'Notificaciones del sistema' },
+    contabilidad: { title: 'Contabilidad', subtitle: 'Ingresos, gastos y ganancia neta' },
     configuracion: { title: 'Configuración', subtitle: 'Ajustes del sistema' },
 }
 
@@ -69,14 +74,61 @@ export default function Home() {
             const totalStock = stockData?.reduce((sum, item) => sum + (item.stock || 0), 0) || 0
             const { count: ordersCount } = await supabase
                 .from('orders').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-            const { count: lowStockCount } = await supabase
-                .from('alerts').select('*', { count: 'exact', head: true })
-                .eq('type', 'stock_low').eq('resolved', false)
+
+            // Count low-stock items directly (stock ≤ 3) — works regardless of alerts table
+            const { data: lowStockItems } = await supabase
+                .from('items')
+                .select('id, code, stock, tenant_id, data')
+                .eq('active', true)
+                .lte('stock', 3)
+
+            const lowCount = lowStockItems?.length || 0
+
+            // Auto-create missing alerts for low-stock items (in case n8n or Supabase changed stock)
+            if (lowStockItems && lowStockItems.length > 0) {
+                for (const item of lowStockItems) {
+                    const { data: existing } = await supabase
+                        .from('alerts')
+                        .select('id')
+                        .eq('item_id', item.id)
+                        .eq('type', 'stock_low')
+                        .eq('resolved', false)
+                        .maybeSingle()
+
+                    if (!existing) {
+                        await supabase.from('alerts').insert({
+                            tenant_id: item.tenant_id,
+                            item_id: item.id,
+                            type: 'stock_low',
+                            severity: item.stock === 0 ? 'critical' : 'warning',
+                            message: `Stock bajo: ${item.data?.piedra || item.code} (${item.stock} unidades)`,
+                            resolved: false,
+                        })
+                    }
+                }
+            }
+
+            // Also resolve alerts for items that now have healthy stock
+            const { data: openAlerts } = await supabase
+                .from('alerts')
+                .select('id, item_id')
+                .eq('type', 'stock_low')
+                .eq('resolved', false)
+
+            if (openAlerts) {
+                const lowIds = new Set(lowStockItems?.map(i => i.id) || [])
+                for (const a of openAlerts) {
+                    if (!lowIds.has(a.item_id)) {
+                        await supabase.from('alerts').update({ resolved: true }).eq('id', a.id)
+                    }
+                }
+            }
+
             setStats({
                 totalProducts: productsCount || 0,
                 totalStock,
                 pendingOrders: ordersCount || 0,
-                lowStock: lowStockCount || 0,
+                lowStock: lowCount,
             })
         } catch (error) {
             console.error('Error loading stats:', error)
@@ -142,15 +194,29 @@ export default function Home() {
                 </nav>
 
                 {/* Footer */}
-                <div className={`p-4 border-t border-cv-border ${collapsed ? 'flex justify-center' : ''}`}>
+                <div className={`p-4 border-t border-cv-border space-y-2 ${collapsed ? 'flex flex-col items-center' : ''}`}>
+                    {/* Status */}
                     {collapsed ? (
                         <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-glow" />
                     ) : (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 mb-1">
                             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-glow" />
                             <span className="text-xs text-slate-500">Sistema operativo</span>
                         </div>
                     )}
+                    {/* Logout */}
+                    <button
+                        onClick={async () => {
+                            const supabase = createClient()
+                            await supabase.auth.signOut()
+                            window.location.href = '/login'
+                        }}
+                        title={collapsed ? 'Cerrar sesión' : undefined}
+                        className={`flex items-center gap-2 text-xs text-slate-500 hover:text-red-400 transition-colors ${collapsed ? 'justify-center mt-1' : 'w-full px-2 py-1.5 rounded-lg hover:bg-red-500/10'}`}
+                    >
+                        <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
+                        {!collapsed && <span>Cerrar sesión</span>}
+                    </button>
                 </div>
             </>
         )
@@ -305,6 +371,13 @@ export default function Home() {
                         </div>
                     )}
 
+                    {/* ── CONTABILIDAD ── */}
+                    {activeSection === 'contabilidad' && (
+                        <div className="animate-fadeInUp opacity-0">
+                            <AccountingView />
+                        </div>
+                    )}
+
                     {/* ── CONFIGURACIÓN ── */}
                     {activeSection === 'configuracion' && (
                         <div className="animate-fadeInUp opacity-0 max-w-2xl space-y-6">
@@ -332,6 +405,8 @@ export default function Home() {
                                     <span className="text-sm text-emerald-400 font-medium">Supabase conectado</span>
                                 </div>
                             </div>
+
+                            <MFASettings />
 
                             <div className="glass-card p-6">
                                 <h2 className="text-sm font-semibold text-white mb-1">Soporte</h2>
